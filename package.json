@@ -1,0 +1,17 @@
+{
+  "name": "aoc-complete",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx --watch src/20%npm_config_year%/day%npm_config_date%/puzzle.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.3",
+    "vitest": "^2.1.1"
+  },
+  "volta": {
+    "node": "20.17.0"
+  }
+}

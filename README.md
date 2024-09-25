@@ -19,3 +19,13 @@ Here's how to run the scripts and what they do:
 `npm start --year=## --date=##`
 
 The start command needs to know what year and what date you want to work on. The year is the last two digits of the year (ex. 23 for 2023) and the date is the calendar date that's zero-padded (ex. 01 for 1 or 25 for 25)
+
+### Generate
+
+`npm run generate --year=## --date=##`
+
+Generates the puzzle files (and directories if needed) for whichever day you want to solve.
+
+The year parameter is optional - if you don't pass it, it will default to the hard coded year on line 3 of `utils/createPuzzleFiles.ts`. If you're working on puzzles from a specific year it'll be fastest to update this default value.
+
+Same as the `start` command, both `year` and `date` are double digits and zero padded.

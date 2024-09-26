@@ -22,6 +22,8 @@ const template = `
 import * as h from "../../utils/helpers.js";
 const initData = await h.readData("${inputFile}");
 
+// known variables
+
 // functions
 
 // part 1 logic
@@ -32,11 +34,16 @@ const initData = await h.readData("${inputFile}");
 if (import.meta.vitest) {
   const { describe, it, expect } = import.meta.vitest;
 
-  describe('part 1 test cases', () => {
-    const testData = [];
+  describe.todo('part 1 test cases', () => {
+    const sampleInput = [];
+
+    it("", () => {});
   });
-  describe('part 2 test cases', () => {
-    const testData = [];
+
+  describe.todo('part 2 test cases', () => {
+    const sampleInput = [];
+
+    it("", () => {});
   });
 }
 `;

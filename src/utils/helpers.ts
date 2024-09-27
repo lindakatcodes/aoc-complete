@@ -2,7 +2,7 @@ import type { PathLike } from "node:fs";
 import type { FileHandle } from "node:fs/promises";
 import { readFile } from "node:fs/promises";
 
-// Reads puzzle input and returns the data
+// Reads puzzle input and returns the data as a string
 export async function readData(file: PathLike | FileHandle) {
   try {
     const data = await readFile(file, { encoding: "utf8" });

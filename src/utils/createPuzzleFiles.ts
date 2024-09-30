@@ -20,7 +20,7 @@ const inputFile = `${dayFolder}/input.txt`;
 // make the template that should go in each puzzle file
 const template = `
 import * as h from "../../utils/helpers.js";
-const initData = await h.readData("${inputFile}");
+const initData = (await h.readData("${inputFile}")) as string;
 
 // known variables
 
@@ -36,12 +36,14 @@ if (import.meta.vitest) {
 
   describe.todo('part 1 test cases', () => {
     const sampleInput = [];
+    const sampleAnswers = [];
 
     it("", () => {});
   });
 
   describe.todo('part 2 test cases', () => {
     const sampleInput = [];
+    const sampleAnswers = [];
 
     it("", () => {});
   });

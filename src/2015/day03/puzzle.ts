@@ -1,5 +1,5 @@
 import * as h from "../../utils/helpers.js";
-const initData = (await h.readData("./src/2015/day03/input.txt")) || "";
+const initData = (await h.readData("./src/2015/day03/input.txt")) as string;
 
 // known variables
 const Directions = {

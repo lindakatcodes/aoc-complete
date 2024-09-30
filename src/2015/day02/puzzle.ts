@@ -1,5 +1,5 @@
 import * as h from "../../utils/helpers.js";
-const initData = await h.readData("./src/2015/day02/input.txt");
+const initData = (await h.readData("./src/2015/day02/input.txt")) as string;
 
 // known variables
 const allPackages = initData!.split("\r\n").map((str) => {

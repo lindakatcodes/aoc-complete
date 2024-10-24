@@ -18,3 +18,7 @@ export function sumNumberArray(numArr: number[]) {
     return first + second;
   }, 0);
 }
+
+export function splitNewLines(data: string) {
+  return data.split(/\r\n|\n/g);
+} 

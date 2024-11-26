@@ -2,6 +2,13 @@
 
 This is my repo for all of my [advent of code](https://adventofcode.com) solutions.
 
+...or at least, it will be! I've been participating in AoC since 2016, and have gone through a few different iterations of how my setup looks. My goal is for this to be the final version of things, at least as far as JavaScript iterations are concerned. So I intend to port over my previous solutions into this new structure. However, I also want those puzzles to still be able to run, so some file cleanup to adjust how inputs are read and where helper functions are (and which still exist) will be needed too.
+
+For now, I'm linking to my 3 previous repos here which are all archived. As I get the solutions ported over that I want to have here, I'll clean up these links. 
+- 2016-2021: https://github.com/lindakatcodes/adventOfCode-JavaScript
+- 2022: https://github.com/lindakatcodes/aoc-22
+- 2023: https://github.com/lindakatcodes/aoc23
+
 ## Structure and Packages
 
 I've decided to organize the puzzles into individual files within their respective year. I like the inputs in a separate file since they're typically very large, but having them directly next to the puzzle file allows me to be a little more generic in my file generation which makes it more reliable.

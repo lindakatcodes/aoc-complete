@@ -25,6 +25,8 @@ Here's how to run the scripts and what they do:
 
 `npm run generate --year=## --date=##`
 
+> NOTE: Both year and date are 2 digits! Year is the last 2 digits of the current year; date is the day of the puzzle starting with a 0 for numbers smaller than 10.
+
 Generates the puzzle files (and directories if needed) for whichever day you want to solve.
 
 The year parameter is optional - if you don't pass it, it will default to the hard coded year on line 3 of `utils/createPuzzleFiles.ts`. If you're working on puzzles from a specific year it'll be fastest to update this default value.

@@ -57,11 +57,11 @@ function checkReportSafetyWithDampener(report: number[]) {
 
   const isFullIncrease = direction.every((val) => val === "inc");
   const isDampenedIncrease =
-    direction.filter((val) => val === "inc").length === report.length - 2;
+    direction.filter((val) => val === "inc").length === direction.length - 1;
 
   const isFullDecrease = direction.every((val) => val === "dec");
   const isDampenedDecrease =
-    direction.filter((val) => val === "dec").length === report.length - 2;
+    direction.filter((val) => val === "dec").length === direction.length - 1;
 
   const intervals = [];
 
@@ -83,9 +83,11 @@ function checkReportSafetyWithDampener(report: number[]) {
       ];
     } else {
       const valToRemove = direction.findIndex((val) => val !== "dec");
+      // valToRemove is actually showing the relationship between that index and the next value. so how i'm getting the adjusted report isn't right. need to figure out of the two numbers involved, which to keep
+
       adjustedReport = [
-        ...report.slice(0, valToRemove),
-        ...report.slice(valToRemove + 1),
+        ...report.slice(0, valToRemove + 1),
+        ...report.slice(valToRemove + 2),
       ];
     }
 
@@ -97,11 +99,28 @@ function checkReportSafetyWithDampener(report: number[]) {
 
   const hasSmallIntervals = intervals.every((val) => val >= 1 && val <= 3);
 
+  let hasDampenedIntervals = false;
+
+  if (!hasSmallIntervals) {
+    // can I take the first val off and get it to pass?
+    const withoutFirst = intervals.slice(1);
+    // what about the last one?
+    const withoutLast = intervals.slice(0, intervals.length - 1);
+
+    const firstWorks = withoutFirst.every((val) => val >= 1 && val <= 3);
+    const lastWorks = withoutLast.every((val) => val >= 1 && val <= 3);
+    if (firstWorks || lastWorks) {
+      hasDampenedIntervals = true;
+    }
+  }
+
   if (
     (isFullIncrease && hasSmallIntervals) ||
     (isFullDecrease && hasSmallIntervals) ||
     (isDampenedIncrease && hasSmallIntervals) ||
-    (isDampenedDecrease && hasSmallIntervals)
+    (isDampenedDecrease && hasSmallIntervals) ||
+    (isFullIncrease && hasDampenedIntervals) ||
+    (isFullDecrease && hasDampenedIntervals)
   ) {
     return true;
   } else {
@@ -138,6 +157,15 @@ if (import.meta.vitest) {
     [1, 3, 6, 7, 9],
   ];
 
+  const sample2 = [
+    [75, 77, 72, 70, 69],
+    [28, 28, 27, 26, 23],
+    [20, 16, 14, 12, 10, 8, 7, 6],
+    [74, 70, 71, 70, 68, 65],
+    [44, 37, 34, 31, 30],
+    [52, 47, 49, 46, 43, 41, 40],
+  ];
+
   describe("part 1 test cases", () => {
     const sampleSafetyChecks = [true, false, false, false, false, true];
     const sampleSafeCount = 2;
@@ -157,6 +185,8 @@ if (import.meta.vitest) {
   describe("part 2 test cases", () => {
     const sampleSafetyChecks = [true, false, false, true, true, true];
     const sampleSafeCount = 4;
+    const sample2Checks = [true, true, true, true, true, true];
+    const sample2Count = 6;
 
     it("can test report safety with the problem dampener", () => {
       const testReportChecks = sampleInput.map((report) => {
@@ -167,6 +197,17 @@ if (import.meta.vitest) {
 
       const testSafeCount = countSafeReports(sampleSafetyChecks);
       expect(testSafeCount).toEqual(sampleSafeCount);
+    });
+
+    it("gets the correct results with the second sample data", () => {
+      const testReportChecks = sample2.map((report) => {
+        return checkReportSafetyWithDampener(report);
+      });
+
+      expect(testReportChecks).toEqual(sample2Checks);
+
+      const testSafeCount = countSafeReports(sampleSafetyChecks);
+      expect(testSafeCount).toEqual(sample2Count);
     });
   });
 }

@@ -7,125 +7,88 @@ const parsedData = h.splitNewLines(initData).map((row) => {
 });
 
 // functions
-function checkReportSafety(report: number[]) {
-  // reports are safe if all numbers inc or dec, and only by 1-3 points
-  const sortedCopy = [...report].toSorted((a, b) => a - b);
-  const reverseSort = [...sortedCopy].reverse();
-
-  const isIncreasing = report.every(
-    (level, index) => level === sortedCopy[index]
-  );
-  const isDecreasing = report.every(
-    (level, index) => level === reverseSort[index]
-  );
-
-  const intervals = [];
-
-  if (isIncreasing || isDecreasing) {
-    for (let i = 0; i < report.length - 1; i++) {
-      const dist = Math.abs(report[i] - report[i + 1]);
-      intervals.push(dist);
-    }
-  }
-
-  const hasSmallIntervals = intervals.every((val) => val >= 1 && val <= 3);
-
-  if (isIncreasing && hasSmallIntervals) {
-    return true;
-  } else if (isDecreasing && hasSmallIntervals) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 function countSafeReports(results: boolean[]) {
   return results.filter((result) => !!result).length;
 }
 
-function checkReportSafetyWithDampener(report: number[]) {
-  const direction = [];
+function isOrdered(report: number[]) {
+  const incRep = [...report].toSorted((a, b) => a - b);
+  const decRep = [...incRep].toReversed();
+
+  const isIncreasing = report.every((level, index) => level === incRep[index]);
+  const isDecreasing = report.every((level, index) => level === decRep[index]);
+  return isIncreasing || isDecreasing ? true : false;
+}
+
+function isPDOrdered(report: number[]) {
+  // can remove 1 incorrect item and check again
+  for (let i = 0; i < report.length; i++) {
+    const modifiedReport = [...report.slice(0, i), ...report.slice(i + 1)];
+    const modifiedIncRep = [...modifiedReport].toSorted((a, b) => a - b);
+    const modifiedDecRep = [...modifiedIncRep].toReversed();
+
+    const isIncreasing = modifiedReport.every(
+      (level, index) => level === modifiedIncRep[index]
+    );
+    const isDecreasing = modifiedReport.every(
+      (level, index) => level === modifiedDecRep[index]
+    );
+
+    if (isIncreasing || isDecreasing) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isNearby(report: number[]) {
+  const dists = [];
+
   for (let i = 0; i < report.length - 1; i++) {
-    if (report[i] < report[i + 1]) {
-      direction.push("inc");
-    } else if (report[i] > report[i + 1]) {
-      direction.push("dec");
-    } else {
-      direction.push("eq");
-    }
+    const dist = Math.abs(report[i] - report[i + 1]);
+    dists.push(dist);
   }
 
-  const isFullIncrease = direction.every((val) => val === "inc");
-  const isDampenedIncrease =
-    direction.filter((val) => val === "inc").length === direction.length - 1;
+  const hasSmallIntervals = dists.every((val) => val >= 1 && val <= 3);
 
-  const isFullDecrease = direction.every((val) => val === "dec");
-  const isDampenedDecrease =
-    direction.filter((val) => val === "dec").length === direction.length - 1;
+  return hasSmallIntervals ? true : false;
+}
 
-  const intervals = [];
-
-  if (isFullIncrease || isFullDecrease) {
-    for (let i = 0; i < report.length - 1; i++) {
-      const dist = Math.abs(report[i] - report[i + 1]);
-      intervals.push(dist);
+function isPDNearby(report: number[]) {
+  // Try removing each number one at a time and check if the remaining sequence is valid
+  for (let i = 0; i < report.length; i++) {
+    const modifiedReport = [...report.slice(0, i), ...report.slice(i + 1)];
+    if (isNearby(modifiedReport)) {
+      return true;
     }
   }
+  return false;
+}
 
-  if (isDampenedIncrease || isDampenedDecrease) {
-    let adjustedReport = [];
+function checkReportSafety(report: number[]) {
+  // reports are safe if all numbers inc or dec, and only by 1-3 points
+  const goesOneDirection = isOrdered(report);
+  const hasSmallDistances = isNearby(report);
 
-    if (isDampenedIncrease) {
-      const valToRemove = direction.findIndex((val) => val !== "inc");
-      adjustedReport = [
-        ...report.slice(0, valToRemove),
-        ...report.slice(valToRemove + 1),
-      ];
-    } else {
-      const valToRemove = direction.findIndex((val) => val !== "dec");
-      // valToRemove is actually showing the relationship between that index and the next value. so how i'm getting the adjusted report isn't right. need to figure out of the two numbers involved, which to keep
+  return goesOneDirection && hasSmallDistances ? true : false;
+}
 
-      adjustedReport = [
-        ...report.slice(0, valToRemove + 1),
-        ...report.slice(valToRemove + 2),
-      ];
-    }
-
-    for (let i = 0; i < adjustedReport.length - 1; i++) {
-      const dist = Math.abs(adjustedReport[i] - adjustedReport[i + 1]);
-      intervals.push(dist);
-    }
-  }
-
-  const hasSmallIntervals = intervals.every((val) => val >= 1 && val <= 3);
-
-  let hasDampenedIntervals = false;
-
-  if (!hasSmallIntervals) {
-    // can I take the first val off and get it to pass?
-    const withoutFirst = intervals.slice(1);
-    // what about the last one?
-    const withoutLast = intervals.slice(0, intervals.length - 1);
-
-    const firstWorks = withoutFirst.every((val) => val >= 1 && val <= 3);
-    const lastWorks = withoutLast.every((val) => val >= 1 && val <= 3);
-    if (firstWorks || lastWorks) {
-      hasDampenedIntervals = true;
-    }
-  }
-
-  if (
-    (isFullIncrease && hasSmallIntervals) ||
-    (isFullDecrease && hasSmallIntervals) ||
-    (isDampenedIncrease && hasSmallIntervals) ||
-    (isDampenedDecrease && hasSmallIntervals) ||
-    (isFullIncrease && hasDampenedIntervals) ||
-    (isFullDecrease && hasDampenedIntervals)
-  ) {
+function checkReportSafetyWithPD(report: number[]) {
+  // First check if it's already safe without PD
+  if (checkReportSafety(report)) {
     return true;
-  } else {
-    return false;
   }
+
+  // Try removing each number one at a time
+  for (let i = 0; i < report.length; i++) {
+    const modifiedReport = [...report.slice(0, i), ...report.slice(i + 1)];
+    if (isOrdered(modifiedReport) && isNearby(modifiedReport)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // part 1 logic
@@ -137,12 +100,12 @@ parsedData.forEach((report) => {
 console.log({ part1: validReports });
 
 // part 2 logic
-let validReportsWithDampener = 0;
+let validReportsWithPD = 0;
 parsedData.forEach((report) => {
-  const isSafe = checkReportSafetyWithDampener(report);
-  if (isSafe) validReportsWithDampener++;
+  const isSafe = checkReportSafetyWithPD(report);
+  if (isSafe) validReportsWithPD++;
 });
-console.log({ part2: validReportsWithDampener });
+console.log({ part2: validReportsWithPD });
 
 // tests
 if (import.meta.vitest) {
@@ -190,7 +153,7 @@ if (import.meta.vitest) {
 
     it("can test report safety with the problem dampener", () => {
       const testReportChecks = sampleInput.map((report) => {
-        return checkReportSafetyWithDampener(report);
+        return checkReportSafetyWithPD(report);
       });
 
       expect(testReportChecks).toEqual(sampleSafetyChecks);
@@ -201,12 +164,12 @@ if (import.meta.vitest) {
 
     it("gets the correct results with the second sample data", () => {
       const testReportChecks = sample2.map((report) => {
-        return checkReportSafetyWithDampener(report);
+        return checkReportSafetyWithPD(report);
       });
 
       expect(testReportChecks).toEqual(sample2Checks);
 
-      const testSafeCount = countSafeReports(sampleSafetyChecks);
+      const testSafeCount = countSafeReports(sample2Checks);
       expect(testSafeCount).toEqual(sample2Count);
     });
   });

@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# can't share the puzzle inputs to everyone
+src/*/*/input.txt

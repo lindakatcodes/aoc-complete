@@ -2,10 +2,64 @@ import * as h from "../../utils/helpers.js";
 const initData = (await h.readData("./src/2024/day04/input.txt")) as string;
 
 // known variables
+// from Cody: from any location, this gives us the most basic change in our coord if we move that direction. once we multiply this value by whatever step we're on, it will then change by that much to keep us moving and let us build the whole string
+const directions = [
+  [0, 1],   // right
+  [0, -1],  // left
+  [-1, 0],  // up
+  [1, 0],   // down
+  [-1, 1],  // diagonal right up
+  [1, 1],   // diagonal right down
+  [-1, -1], // diagonal left up
+  [1, -1]   // diagonal left down
+];
+
+// for the second part, we only want to check diagonals (since the other shapes are actually plus signs not x's)
+const onlyDiagonals = [
+  [-1, 1],  // diagonal right up
+  [1, 1],   // diagonal right down
+  [-1, -1], // diagonal left up
+  [1, -1]   // diagonal left down
+]
 
 // functions
 function createSearchArray(input: string[]) {
   return input.map((row) => row.split(""));
+}
+
+// from Cody: makes sure a given row and col number are within bounds of the grid
+function isInBounds(row: number, col: number, grid: string[][]): boolean {
+  return row >= 0 && row < grid.length && col >= 0 && col < grid[0].length;
+}
+
+/* 
+  from Cody: takes all the pertinent values and tries to build the desired phrase, as long as the values are in bounds
+  startRow and startCol: the location of the X we're checking against
+  rowDelta and colDelta: the amount we're moving in a given direction
+  length: how long the phrase we're trying to build is
+  grid: our initial grid, so we can actually build the string if the location is valid
+*/
+function buildDirectionalString(
+  startRow: number,
+  startCol: number,
+  rowDelta: number,
+  colDelta: number,
+  length: number,
+  grid: string[][]
+): string | null {
+  let result = "";
+
+  for (let step = 0; step < length; step++) {
+    const currentRow = startRow + rowDelta * step;
+    const currentCol = startCol + colDelta * step;
+
+    if (!isInBounds(currentRow, currentCol, grid)) {
+      return null;
+    }
+    result += grid[currentRow][currentCol];
+  }
+
+  return result;
 }
 
 function getPhraseCount(phrase: string, arr: string[][]) {
@@ -19,47 +73,77 @@ function getPhraseCount(phrase: string, arr: string[][]) {
       const letter = row[xi];
 
       if (letter === "X") {
-        let match = false;
-
-        // right and left are quick to get
-        const right =
-          xi + 4 > row.length ? row.slice(xi) : row.slice(xi, xi + 4);
-
-        const left =
-          xi - 3 < 0 ? row.slice(0, xi + 1) : row.slice(xi - 3, xi + 1);
-
-        // the rest need the i to change in both directions, and I don't know the best way to check each one and/or cut things off early if needed so there's no out of bounds errors. need to grab that
-        // upwards
-        const up =
-          i - 3 < 0
-            ? arr[0][xi] + arr[i - 2][xi] + arr[i - 1][xi] + row[xi]
-            : arr[i - 3][xi] + arr[i - 2][xi] + arr[i - 1][xi] + row[xi];
-
-        // downwards
-        const down =
-          i + 3 > arr.length
-            ? row[xi] + arr[i + 1][xi] + arr[i + 2][xi] + arr[i + 3][xi]
-            : row[xi] + arr[xi + 3][xi] + arr[i + 2][xi] + arr[i + 1][xi];
-
-        // diag right up
-
-        // diag right down
-
-        // diag left down
-
-        // diag left up
+        for (const [rowDelta, colDelta] of directions) {
+          const str = buildDirectionalString(
+            i,
+            xi,
+            rowDelta,
+            colDelta,
+            phrase.length,
+            arr
+          );
+          if (str === phrase) {
+            count++;
+          }
+        }
       }
     }
   }
+  return count;
+}
 
-  // when an x is found, check each possible direction to see if the letters are as expected. potentially just assemble a string to compare for each one, and early exit if it goes out of bounds?
+// from Cody: slightly simplifies the logic to only check diagonals and we also need to check one letter before and one after only since we're starting from the middle and the phrase is shorter
+function findMASPatterns(row: number, col: number, grid: string[][]): number {
+  let patternCount = 0;
+  
+  for (const [rowDelta, colDelta] of onlyDiagonals) {
+    // Check for M (one step backwards)
+    const prevRow = row - rowDelta;
+    const prevCol = col - colDelta;
+    // Check for S (one step forwards)
+    const nextRow = row + rowDelta;
+    const nextCol = col + colDelta;
+    
+    if (isInBounds(prevRow, prevCol, grid) && 
+        isInBounds(nextRow, nextCol, grid) && 
+        grid[prevRow][prevCol] === 'M' && 
+        grid[nextRow][nextCol] === 'S') {
+      patternCount++;
+    }
+  }
+  
+  return patternCount;
+}
 
-  // the second it's not, cancel out and move on. otherwise, if we find the whole word, add it to the count
+function getCrossedPhraseCount(arr: string[][]) {
+  let count = 0;
+
+  // now looking for A since that's the part that crosses both strings
+  for (let i = 0; i < arr.length; i++) {
+    const row = arr[i];
+
+    for (let xi = 0; xi < row.length; xi++) {
+      const letter = row[xi];
+
+      if (letter === "A") {
+        const matches = findMASPatterns(i, xi, arr);
+        if (matches >= 2) {
+          count++;
+        }
+      }
+    }
+  }
+  return count;
 }
 
 // part 1 logic
+const xmasGrid = createSearchArray(h.splitNewLines(initData));
+const xmasCount = getPhraseCount("XMAS", xmasGrid);
+console.log({ part1: xmasCount });
 
 // part 2 logic
+const masCount = getCrossedPhraseCount(xmasGrid);
+console.log({part2: masCount })
 
 // tests
 if (import.meta.vitest) {
@@ -88,10 +172,25 @@ if (import.meta.vitest) {
     });
   });
 
-  describe.todo("part 2 test cases", () => {
-    const sampleInput = [];
-    const sampleAnswers = [];
+  describe("part 2 test cases", () => {
+    const sampleInput = [
+      "MMMSXXMASM",
+      "MSAMXMSMSA",
+      "AMXSXMAAMM",
+      "MSAMASMSMX",
+      "XMASAMXAMM",
+      "XXAMMXXAMA",
+      "SMSMSASXSS",
+      "SAXAMASAAA",
+      "MAMMMXMMMM",
+      "MXMXAXMASX",
+    ];
+    const sampleCount = 9;
 
-    it("", () => {});
+    it("finds the right amount of crossings of the sample phrase", () => {
+      const testSearch = createSearchArray(sampleInput);
+      const testCount = getCrossedPhraseCount(testSearch);
+      expect(testCount).toEqual(sampleCount);
+    });
   });
 }

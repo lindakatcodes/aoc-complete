@@ -22,3 +22,14 @@ export function sumNumberArray(numArr: number[]) {
 export function splitNewLines(data: string) {
   return data.split(/\r\n|\n/g);
 } 
+
+export function isInBounds(
+  row: number,
+  col: number,
+  maxRow: number,
+  maxCol: number
+) {
+  const rowInBounds = row >= 0 && row < maxRow;
+  const colInBounds = col >= 0 && col < maxCol;
+  return rowInBounds && colInBounds;
+}

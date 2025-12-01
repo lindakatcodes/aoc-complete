@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "fs/promises";
 
-const defaultYear = 2024;
+const defaultYear = 2025;
 const puzzleDay = Number(process.env.npm_config_date);
 const puzzleYear = Number(`20${process.env.npm_config_year}`) || defaultYear;
 

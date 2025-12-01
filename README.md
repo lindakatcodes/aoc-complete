@@ -42,7 +42,7 @@ Each puzzle is set up with tests, and I recommend running the test command to do
 
 By default Vitest will run all your tests. To keep things faster I recommend passing the year and date as an additional filter so it'll only run the test you're working on.
 
-`npm run test 2015/01`
+`npm run test 2015/day01`
 
 Both tests in a file are initially set in "todo" mode, so they won't show as failing. As you implement the tests, remember to remove the `.todo` from the describe so the test will actually run!
 

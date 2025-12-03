@@ -33,9 +33,33 @@ function countZeroes(rotationArr): number {
   return rotationArr.filter((val) => val === 0).length;
 }
 
+// couldn't solve this without ai help, and even still don't get this, but whatever
 // count the number of times we cross 0 during the rotations
-function calcZeroes(inputArr): number {
-  return 0;
+function calcZeroes(inputArr: string[]): number {
+  let current = start;
+  let total = 0;
+
+  for (const direction of inputArr) {
+    const sign = direction.charAt(0);
+    const val = Number(direction.slice(1));
+
+    // compute the first step k (1-based) within this rotation that will land on 0
+    // For R: current + k ≡ 0 (mod 100) => k ≡ (100 - current) mod 100
+    // For L: current - k ≡ 0 (mod 100) => k ≡ current mod 100
+    let firstK = sign === "R" ? (100 - current) % 100 : current % 100;
+    if (firstK === 0) firstK = 100; // k=0 is not a valid step; the first valid k is 100
+
+    if (val >= firstK) {
+      total += Math.floor((val - firstK) / 100) + 1;
+    }
+
+    // update current to the end of this rotation
+    let next = current + (sign === "L" ? -val : val);
+    next = ((next % 100) + 100) % 100;
+    current = next;
+  }
+
+  return total;
 }
 
 // part 1 logic
@@ -44,6 +68,8 @@ const zeroes = countZeroes(rotations);
 console.log("part 1: ", zeroes);
 
 // part 2 logic
+const zeroesTwo = calcZeroes(instructions);
+console.log("part 2: ", zeroesTwo);
 
 // tests
 if (import.meta.vitest) {

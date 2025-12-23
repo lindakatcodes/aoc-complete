@@ -32,127 +32,107 @@ function findLargestArea(input: number[][]) {
   return maxArea;
 }
 
-function findEdges(input: number[][]) {
-  let minX = input[0][0];
-  let maxX = input[0][0];
-  let minY = input[0][1];
-  let maxY = input[0][1];
-
-  input.forEach((point) => {
-    if (point[0] < minX) {
-      minX = point[0];
-    } else if (point[0] > maxX) {
-      maxX = point[0];
-    }
-    if (point[1] < minY) {
-      minY = point[1];
-    } else if (point[1] > maxY) {
-      maxY = point[1];
-    }
+// honestly don't even know what's going on here anymore, i gave up :(
+function findLargestFilledArea(input: number[][]) {
+  // Coordinate Compression to handle large inputs
+  const xSet = new Set<number>();
+  const ySet = new Set<number>();
+  input.forEach(([x, y]) => {
+    xSet.add(x);
+    ySet.add(y);
   });
 
-  return [minX, maxX, minY, maxY];
-}
+  const minX = Math.min(...xSet);
+  const maxX = Math.max(...xSet);
+  const minY = Math.min(...ySet);
+  const maxY = Math.max(...ySet);
 
-function buildGrid(input: number[][]): number[][] {
-  const [minX, maxX, minY, maxY] = findEdges(input);
+  // Add padding for flood fill
+  xSet.add(minX - 1);
+  xSet.add(maxX + 1);
+  ySet.add(minY - 1);
+  ySet.add(maxY + 1);
 
-  const width = maxX - minX + 1;
-  const height = maxY - minY + 1;
-  const padding = 1;
+  const xs = Array.from(xSet).sort((a, b) => a - b);
+  const ys = Array.from(ySet).sort((a, b) => a - b);
 
-  const gridW = width + padding * 2;
-  const gridH = height + padding * 2;
+  const xMap = new Map<number, number>();
+  xs.forEach((x, i) => xMap.set(x, i * 2));
+  const yMap = new Map<number, number>();
+  ys.forEach((y, i) => yMap.set(y, i * 2));
 
-  const grid = Array.from({ length: gridH }, () => new Array(gridW).fill(0));
-  return grid;
-}
+  const gridW = xs.length * 2 - 1;
+  const gridH = ys.length * 2 - 1;
 
-function buildPrefixTable(grid: number[][]) {
-  const table: number[][] = [];
+  // Use Int8Array for memory efficiency
+  const grid = new Int8Array(gridW * gridH);
 
-  for (let r = 0; r < grid.length; r++) {
-    table[r] = [];
-    for (let c = 0; c < grid[0].length; c++) {
-      const curr = grid[r][c];
-      const above = table[r - 1]?.[c] ?? 0;
-      const left = table[r][c - 1] ?? 0;
-      const diag = table[r - 1]?.[c - 1] ?? 0;
-
-      table[r][c] = curr + above + left - diag;
-    }
-  }
-
-  return table;
-}
-
-function findLargestFilledArea(input: number[][]) {
-  const [minX, maxX, minY, maxY] = findEdges(input);
-  const mapGrid = buildGrid(input);
-
-  // plot the red tiles and any connecting green tiles to form the boundary of the shape
+  // Draw boundaries
   for (let i = 0; i < input.length; i++) {
     const currPoint = input[i];
     const nextPoint = input[i + 1 < input.length ? i + 1 : 0];
 
-    if (currPoint[0] === nextPoint[0]) {
-      const x = currPoint[0];
-      const start = Math.min(currPoint[1], nextPoint[1]);
-      const end = Math.max(currPoint[1], nextPoint[1]);
+    const c1 = xMap.get(currPoint[0])!;
+    const r1 = yMap.get(currPoint[1])!;
+    const c2 = xMap.get(nextPoint[0])!;
+    const r2 = yMap.get(nextPoint[1])!;
 
-      for (let p = start; p <= end; p++) {
-        const col = x - minX + 1;
-        const row = p - minY + 1;
-        mapGrid[row][col] = 1;
-      }
-    } else {
-      const y = currPoint[1];
-      const start = Math.min(currPoint[0], nextPoint[0]);
-      const end = Math.max(currPoint[0], nextPoint[0]);
+    const cStart = Math.min(c1, c2);
+    const cEnd = Math.max(c1, c2);
+    const rStart = Math.min(r1, r2);
+    const rEnd = Math.max(r1, r2);
 
-      for (let p = start; p <= end; p++) {
-        const col = p - minX + 1;
-        const row = y - minY + 1;
-        mapGrid[row][col] = 1;
+    for (let r = rStart; r <= rEnd; r++) {
+      for (let c = cStart; c <= cEnd; c++) {
+        grid[r * gridW + c] = 1;
       }
     }
   }
 
-  // then need to fill the shape so we know if a tile is inside or outside
-  const queue: number[][] = [[0, 0]];
+  // Flood fill from (0,0) - which corresponds to minX-1, minY-1 (outside)
+  const stack = [0];
+  grid[0] = -1;
 
-  while (queue.length > 0) {
-    const coord = queue.shift()!;
-    if (
-      0 <= coord[0] &&
-      coord[0] <= maxY + 1 &&
-      0 <= coord[1] &&
-      coord[1] <= maxX + 1
-    ) {
-      if (
-        mapGrid[coord[0]][coord[1]] !== 1 &&
-        mapGrid[coord[0]][coord[1]] !== -1
-      ) {
-        mapGrid[coord[0]][coord[1]] = -1;
-        queue.push([coord[0] - 1, coord[1]]);
-        queue.push([coord[0] + 1, coord[1]]);
-        queue.push([coord[0], coord[1] - 1]);
-        queue.push([coord[0], coord[1] + 1]);
+  while (stack.length > 0) {
+    const idx = stack.pop()!;
+    const r = Math.floor(idx / gridW);
+    const c = idx % gridW;
+
+    const neighbors = [
+      [r - 1, c],
+      [r + 1, c],
+      [r, c - 1],
+      [r, c + 1],
+    ];
+
+    for (const [nr, nc] of neighbors) {
+      if (nr >= 0 && nr < gridH && nc >= 0 && nc < gridW) {
+        const nIdx = nr * gridW + nc;
+        if (grid[nIdx] === 0) {
+          grid[nIdx] = -1;
+          stack.push(nIdx);
+        }
       }
     }
   }
 
-  for (let i = 0; i < mapGrid.length; i++) {
-    for (let j = 0; j < mapGrid[0].length; j++) {
-      if (mapGrid[i][j] === 0) {
-        mapGrid[i][j] = 1;
-      }
+  // Build Prefix Table (counting non-outside cells)
+  const prefix = new Int32Array(gridW * gridH);
+  for (let r = 0; r < gridH; r++) {
+    for (let c = 0; c < gridW; c++) {
+      const val = grid[r * gridW + c] === -1 ? 0 : 1;
+      const above = r > 0 ? prefix[(r - 1) * gridW + c] : 0;
+      const left = c > 0 ? prefix[r * gridW + (c - 1)] : 0;
+      const diag = r > 0 && c > 0 ? prefix[(r - 1) * gridW + (c - 1)] : 0;
+      prefix[r * gridW + c] = val + above + left - diag;
     }
   }
 
-  // now we do a 2d prefix sum table, this gives us a value of the area for that cell starting from 0,0. we can use this to then compare against the area we get for the coords we want to compare - if the two values match all the values inside the rectangle were valid (otherwise the sum table will be lower since it had -1s in it so it's not valid)
-  const prefixTable = buildPrefixTable(mapGrid);
-  console.log({ prefixTable });
+  function getSum(r1: number, c1: number, r2: number, c2: number) {
+    const p = (r: number, c: number) =>
+      r < 0 || c < 0 ? 0 : prefix[r * gridW + c];
+    return p(r2, c2) - p(r1 - 1, c2) - p(r2, c1 - 1) + p(r1 - 1, c1 - 1);
+  }
 
   let maxArea = 0;
 
@@ -161,26 +141,20 @@ function findLargestFilledArea(input: number[][]) {
 
     for (const point of tilesLeft) {
       const area = calcArea(tile, point);
-      // somehow here need to determine which of tile or point is the topleft and which is the bottomright
 
-      // then need to access the values by subtracting them from the global mins and adding 1 to access the right spot in the table
+      const c1 = xMap.get(Math.min(tile[0], point[0]))!;
+      const c2 = xMap.get(Math.max(tile[0], point[0]))!;
+      const r1 = yMap.get(Math.min(tile[1], point[1]))!;
+      const r2 = yMap.get(Math.max(tile[1], point[1]))!;
 
-      // then use the formula below to calculate the prefix sum and add that comparison to the if statement so we do that and then the area check
+      const totalCells = (r2 - r1 + 1) * (c2 - c1 + 1);
+      const filledCells = getSum(r1, c1, r2, c2);
 
-      if (area > maxArea) {
+      if (filledCells === totalCells && area > maxArea) {
         maxArea = area;
       }
     }
   });
-
-  //   $$ \text{Sum} = P[r2][c2] - P[r1-1][c2] - P[r2][c1-1] + P[r1-1][c1-1] $$
-
-  // Where $P$ is your prefix sum table.
-
-  // Start with the large sum ending at the bottom-right (r2, c2). This covers your rectangle but also includes unwanted areas above and to the left.
-  // Subtract the area "above" (ending at r1-1).
-  // Subtract the area "left" (ending at c1-1).
-  // Add back the top-left corner (ending at r1-1, c1-1). You add this back because you subtracted that corner region twice (once with the "above" part and once with the "left" part).
 
   return maxArea;
 }
@@ -190,6 +164,8 @@ const maxAreaOne = findLargestArea(tilePoints);
 console.log(`part 1: ${maxAreaOne}`);
 
 // part 2 logic
+const maxAreaTwo = findLargestFilledArea(tilePoints);
+console.log(`part 2: ${maxAreaTwo}`);
 
 // tests
 if (import.meta.vitest) {

@@ -27,8 +27,10 @@ const initData = (await h.readData("${inputFile}")) as string;
 // functions
 
 // part 1 logic
+// console.log(\`part 1: \${}\`)
 
 // part 2 logic
+// console.log(\`part 2: \${}\`)
 
 // tests
 if (import.meta.vitest) {
@@ -38,14 +40,14 @@ if (import.meta.vitest) {
     const sampleInput = [];
     const sampleAnswers = [];
 
-    it("", () => {});
+    it("solves part 1", () => {});
   });
 
   describe.todo('part 2 test cases', () => {
     const sampleInput = [];
     const sampleAnswers = [];
 
-    it("", () => {});
+    it("solves part 2", () => {});
   });
 }
 `;

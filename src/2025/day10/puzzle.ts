@@ -88,80 +88,179 @@ function toggleOnMachines(machines: Array<Machine>) {
 function adjustMachinesJoltage(machines: Array<Machine>) {
   machines.forEach((machine) => {
     const target = machine.joltages.split(",").map(Number);
-    const result = solveILP(machine.buttons, target);
+    const result = solveLinearSystem(machine.buttons, target);
     machine.minPressesJoltage = result;
   });
 }
 
-function solveILP(buttons: number[][], target: number[]): number {
-  const numButtons = buttons.length;
-  const numCounters = target.length;
+// Not even gonna attempt to act like I wrote or fully understand this - thanks, Gemini. Dang linear algebra.
+// Solves for x in Ax = B where A is buttons and B is targets.
+// Handles cases where we have more buttons than targets (under-determined).
+function solveLinearSystem(
+  buttons: Array<number[]>,
+  targets: number[]
+): number {
+  const numRows = targets.length;
+  const numCols = buttons.length;
 
-  // Build constraint matrix A where A[i][j] = 1 if button j affects counter i
-  const A: number[][] = Array.from({ length: numCounters }, () =>
-    new Array(numButtons).fill(0)
+  // 1. Build the Augmented Matrix
+  // We create a grid where each row is a counter, and columns are buttons.
+  // The last column (index numCols) holds the target value.
+  // We use Float64Array for precision, though standard JS numbers are doubles anyway.
+  const matrix: number[][] = Array.from({ length: numRows }, () =>
+    Array(numCols + 1).fill(0)
   );
 
-  buttons.forEach((button, btnIdx) => {
-    button.forEach((counterIdx) => {
-      A[counterIdx][btnIdx] = 1;
-    });
-  });
+  for (let col = 0; col < numCols; col++) {
+    const buttonEffects = buttons[col];
+    for (const row of buttonEffects) {
+      // If button 'col' affects counter 'row', put a 1 there.
+      if (row < numRows) {
+        matrix[row][col] = 1;
+      }
+    }
+  }
 
-  // Try all reasonable combinations (bounded search)
-  const maxTotal = target.reduce((sum, t) => sum + t, 0);
-  let bestSolution: number[] | null = null;
-  let bestCost = Infinity;
+  // Fill the last column with targets
+  for (let row = 0; row < numRows; row++) {
+    matrix[row][numCols] = targets[row];
+  }
 
-  // Use recursive search with aggressive pruning
-  function search(
-    presses: number[],
-    btnIdx: number,
-    totalPresses: number
-  ): void {
-    if (totalPresses >= bestCost) return; // Prune
+  // 2. Gaussian Elimination (Forward Elimination)
+  // We try to create a "staircase" of 1s down the diagonal.
+  let pivotRow = 0;
+  const pivotCols: number[] = []; // Keep track of which columns we successfully solved for
+  const freeCols: number[] = []; // Columns we couldn't solve for (the "extra" buttons)
 
-    if (btnIdx === numButtons) {
-      // Check if this satisfies all constraints
-      const achieved = new Array(numCounters).fill(0);
-      buttons.forEach((button, idx) => {
-        button.forEach((cIdx) => {
-          achieved[cIdx] += presses[idx];
-        });
-      });
+  for (let col = 0; col < numCols && pivotRow < numRows; col++) {
+    // a. Find a row with a non-zero value in this column (the Pivot)
+    let sel = -1;
+    for (let row = pivotRow; row < numRows; row++) {
+      if (Math.abs(matrix[row][col]) > 1e-9) {
+        sel = row;
+        break;
+      }
+    }
 
-      if (
-        achieved.every((val, i) => val === target[i]) &&
-        totalPresses < bestCost
-      ) {
-        bestCost = totalPresses;
-        bestSolution = [...presses];
+    if (sel === -1) {
+      // No pivot found in this column? It's a "Free Variable" (extra button).
+      freeCols.push(col);
+      continue;
+    }
+
+    // b. Swap the selected row to the top (current pivotRow)
+    [matrix[pivotRow], matrix[sel]] = [matrix[sel], matrix[pivotRow]];
+    pivotCols.push(col);
+
+    // c. Normalize the pivot row so the leading number is 1
+    const val = matrix[pivotRow][col];
+    for (let j = col; j <= numCols; j++) {
+      matrix[pivotRow][j] /= val;
+    }
+
+    // d. Eliminate this column from all other rows
+    for (let row = 0; row < numRows; row++) {
+      if (row !== pivotRow) {
+        const factor = matrix[row][col];
+        if (Math.abs(factor) > 1e-9) {
+          for (let j = col; j <= numCols; j++) {
+            matrix[row][j] -= factor * matrix[pivotRow][j];
+          }
+        }
+      }
+    }
+
+    pivotRow++;
+  }
+
+  // Collect any remaining columns as free if we didn't pivot on them
+  for (let col = 0; col < numCols; col++) {
+    if (!pivotCols.includes(col) && !freeCols.includes(col)) {
+      freeCols.push(col);
+    }
+  }
+
+  // 3. Solve for Variables
+  // If we have Free Variables (extra buttons), we must search for the best combination.
+  // If not, we just check the single solution.
+
+  let minTotalPresses = Infinity;
+
+  // Helper to check if a number is effectively an integer
+  const isInt = (n: number) => Math.abs(n - Math.round(n)) < 1e-5;
+
+  // Recursive function to try values for free variables
+  // index: which free variable we are currently guessing
+  // currentPresses: map of button index -> number of presses
+  function searchFreeVariables(index: number, currentPresses: number[]) {
+    // Optimization: If we already exceeded a known best, stop.
+    const currentSum = currentPresses.reduce((a, b) => a + b, 0);
+    if (currentSum >= minTotalPresses) return;
+
+    // Base Case: All free variables have a value assigned
+    if (index === freeCols.length) {
+      // Now calculate the Dependent variables (the Pivots)
+      // We work backwards up the rows
+      let valid = true;
+      const finalPresses = [...currentPresses];
+
+      for (let i = pivotCols.length - 1; i >= 0; i--) {
+        const pCol = pivotCols[i];
+        const pRow = i; // Because we swapped rows, pivot i is at row i
+
+        let sum = matrix[pRow][numCols]; // Start with target
+
+        // Subtract effects of free variables
+        for (const fCol of freeCols) {
+          sum -= matrix[pRow][fCol] * finalPresses[fCol];
+        }
+
+        // Subtract effects of other pivots we already solved (though usually 0 due to elimination)
+        // In Reduced Row Echelon Form, this loop isn't strictly needed if we fully reduced,
+        // but good for safety if matrix isn't perfect identity.
+        for (let j = i + 1; j < pivotCols.length; j++) {
+          sum -= matrix[pRow][pivotCols[j]] * finalPresses[pivotCols[j]];
+        }
+
+        // The result is the presses for this button
+        if (sum < -1e-9 || !isInt(sum)) {
+          valid = false;
+          break;
+        }
+        finalPresses[pCol] = Math.round(sum);
+      }
+
+      if (valid) {
+        const total = finalPresses.reduce((a, b) => a + b, 0);
+        if (total < minTotalPresses) {
+          minTotalPresses = total;
+        }
       }
       return;
     }
 
-    // Determine bounds for this button
-    // Lower bound: 0
-    // Upper bound: max value in targets (conservative)
-    const upperBound = Math.max(...target);
-
-    for (
-      let presses_i = 0;
-      presses_i <= Math.min(upperBound, maxTotal - totalPresses);
-      presses_i++
-    ) {
-      presses[btnIdx] = presses_i;
-      search(presses, btnIdx + 1, totalPresses + presses_i);
-
-      // Early termination if we found a very good solution
-      if (bestCost === Math.max(...target)) break;
+    // Recursive Step: Try values for this free variable
+    // Since we want MIN presses, start small.
+    // We limit the search range to avoid infinite loops.
+    // In these puzzles, "redundant" buttons are rarely pressed huge amounts.
+    // However, this is AoC which means we do need a decent range to search through - anything under 100 results in a final total that's too small.
+    const colIdx = freeCols[index];
+    for (let val = 0; val < 500; val++) {
+      currentPresses[colIdx] = val;
+      searchFreeVariables(index + 1, currentPresses);
+      currentPresses[colIdx] = 0; // backtrack
     }
   }
 
-  search(new Array(numButtons).fill(0), 0, 0);
+  // Start the search
+  // Initialize presses array
+  const presses = new Array(numCols).fill(0);
+  searchFreeVariables(0, presses);
 
-  return bestSolution ? bestCost : -1;
+  return minTotalPresses === Infinity ? 0 : minTotalPresses;
 }
+
+
 
 function countPresses(machines: Array<Machine>, type: "indicator" | "joltage") {
   if (type === "indicator") {
